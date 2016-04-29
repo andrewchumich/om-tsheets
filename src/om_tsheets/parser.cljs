@@ -14,8 +14,6 @@
     (if (contains? st key)
       {:value (get st key)})))
 
-
-
 (defmethod read :timesheet/start
   [{:keys [state timesheet]} key params]
   {:value (get timesheet key)})
@@ -28,9 +26,15 @@
   [{:keys [state timesheet]} key params]
   {:value (get timesheet key)})
 
-(defmethod read :db/id
+(defmethod read :timesheet/id
   [{:keys [state timesheet]} key params]
   {:value (get timesheet key)})
+
+(defmethod read :timesheet/jobcode
+  [{:keys [state query timesheet]} key params]
+  (let [st @state
+        jobcode (select-keys (get-in st (:timesheet/jobcode timesheet)) query)]
+    {:value jobcode}))
 
 (defmethod read :timesheets/list
   [{:keys [state query parser] :as env} key params]
@@ -40,14 +44,14 @@
             [timesheet-id]
             (if-let [timesheet (get-in @state timesheet-id)]
               (do
+                
                 (parser (assoc env :timesheet timesheet) query))
               nil))]
     (let [st @state
          timesheet-ids (get st key)]
-      (println st)
-     ;; (println (mapv parse-timesheet timesheet-ids))
-     (if (contains? st key)
-       {:value (get st key)}))))
+      (if (contains? st key)
+        {:value (mapv parse-timesheet timesheet-ids)}
+        {:value []}))))
 
 
 (def parser

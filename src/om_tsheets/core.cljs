@@ -13,16 +13,16 @@
 (enable-console-print!)
 
 (def app-state {:timesheets/list
-                [{:db/id 0
+                [{:timesheet/id 0
                   :timesheet/start (js/Date)
                   :timesheet/end (js/Date)
-                  :jobcode {:db/id 0
-                                      :jobcode/name "Hello"}
+                  :timesheet/jobcode {:jobcode/id 0
+                                      :jobcode/name "A Jobcode"}
                   :timesheet/notes "Some notes"}
-                 {:db/id 1
+                 {:timesheet/id 1
                   :timesheet/start (js/Date)
                   :timesheet/end (js/Date)
-                  :jobcode {:db/id 1
+                  :timesheet/jobcode {:jobcode/id 1
                             :jobcode/name "Running for President"}
                   :timesheet/notes "Some more notes"}] 
                 })
@@ -30,28 +30,28 @@
 
 (defui Jobcode
   static om/Ident
-  (ident [this {:keys [db/id]}]
+  (ident [this {:keys [jobcode/id]}]
          [:jobcode/by-id id])
   static om/IQuery
   (query [this]
-         [:db/id :jobcode/name])
+         [:jobcode/id :jobcode/name])
   Object
   (render [this]
-          (let [{:keys [name]} (om/props this)]
+          (let [{:keys [jobcode/name]} (om/props this)]
             (dom/div nil name))))
 
 (def jobcode-view (om/factory Jobcode))
 
 (defui Timesheet
   static om/Ident
-  (ident [this {:keys [db/id]}]
+  (ident [this {:keys [timesheet/id]}]
          [:timesheets/by-id id])
   static om/IQuery
   (query [this] 
-         `[:db/id :timesheet/start :timesheet/end :timesheet/notes {:jobcode ~(om/get-query Jobcode)}])
+         `[:timesheet/id :timesheet/start :timesheet/end :timesheet/notes {:timesheet/jobcode ~(om/get-query Jobcode)}])
   Object
   (render [this]
-    (let [{:keys [start end jobcode notes]} (om/props this)]
+    (let [{:keys [timesheet/start timesheet/end timesheet/jobcode timesheet/notes]} (om/props this)]
       (dom/div nil
         (dom/div nil "-------------------------------------")
         (dom/div nil start)
@@ -59,7 +59,7 @@
         (jobcode-view jobcode)
         (dom/p nil notes)))))
 
-(def timesheet (om/factory Timesheet {:keyfn :id}))
+(def timesheet (om/factory Timesheet {:keyfn :timesheet/id}))
 
 (defui TimesheetList
   static om/IQueryParams
@@ -70,11 +70,11 @@
          '[{:timesheets/list ?timesheet-item}])
   Object
   (render [this] 
-          (let [{:keys [timesheets]} (om/props this)]
-            (println timesheets)
+          (let [{:keys [timesheets/list]} (om/props this)]
+            (print list)
             (dom/div nil
                      (dom/p nil "HELLO")
-                     (map timesheet timesheets)))))
+                     (map timesheet list)))))
 
 (def reconciler
   (om/reconciler {:state app-state
