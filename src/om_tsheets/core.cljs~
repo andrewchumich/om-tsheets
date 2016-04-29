@@ -1,0 +1,87 @@
+(ns om-tsheets.core
+  (:require-macros [cljs.core.async.macros :refer [go]])
+  (:require [goog.dom :as gdom]
+            [cljs.core.async :as async :refer [<! >! put! chan]]
+            [clojure.string :as string]
+            [om.next :as om :refer-macros [defui]]
+            [om.dom :as dom]
+            [om-tsheets.parser :as tsheets-parser :refer [parser]]
+            [cljs.pprint :as pprint])
+  (:import [goog Uri]
+           [goog.net Jsonp]))
+
+(enable-console-print!)
+
+(def app-state {:timesheets 
+                [{:id 0
+                  :start (js/Date)
+                  :end (js/Date)
+                  :jobcode [:jobcode/by-id 0]
+                  :notes "Some notes"}
+                 {:id 1
+                  :start (js/Date)
+                  :end (js/Date)
+                  :jobcode [:jobcode/by-id 1]
+                  :notes "Some more notes"}]
+                :jobcode/by-id 
+                {0 {:id 0
+                    :name "Hello"}
+                 1 {:id 1
+                    :name "Running for President"}}})
+
+
+(defui Jobcode
+  static om/Ident
+  (ident [this {:keys [id]}]
+         [:jobcode/by-id id])
+  static om/IQuery
+  (query [this]
+         [:id :name])
+  Object
+  (render [this]
+          (let [{:keys [name]} (om/props this)]
+            (dom/div nil name))))
+
+(def jobcode-view (om/factory Jobcode))
+
+(defui Timesheet
+  static om/Ident
+  (ident [this {:keys [id]}]
+         [:timesheet/by-id id])
+  static om/IQuery
+  (query [this]
+         (let [subquery (om/get-query Jobcode)] 
+           `[:id :start :end :notes {:jobcode ~subquery}]))
+  Object
+  (render [this]
+    (let [{:keys [start end jobcode notes]} (om/props this)]
+      (dom/div nil
+        (dom/p nil "Timesheet")
+        (dom/div nil start)
+        (dom/div nil end)
+        (jobcode-view jobcode)
+        (dom/p nil notes)))))
+
+(def timesheet (om/factory Timesheet {:keyfn :id}))
+
+(defui TimesheetList
+  static om/IQuery
+  (query [this]
+         (println `[{:timesheets ~(om/get-query Timesheet)}])
+         `[{:timesheets ~(om/get-query Timesheet)}])
+  Object
+  (render [this] 
+          (let [{:keys [timesheets]} (om/props this)] 
+            (println "TIMESHEET LIST")
+
+            (dom/div nil
+                     (dom/p nil "HELLO")
+                     (map timesheet timesheets)))))
+
+(def reconciler
+  (om/reconciler {:state app-state
+                  :parser parser}))
+
+(println (om/get-query TimesheetList))
+(om/add-root! reconciler 
+              TimesheetList (gdom/getElement "app"))

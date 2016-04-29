@@ -1,0 +1,49 @@
+(ns om-tsheets.parser
+  (:require [goog.dom :as gdom]
+            [cljs.core.async :as async :refer [<! >! put! chan]]
+            [clojure.string :as string]
+            [om.next :as om :refer-macros [defui]]
+            [om.dom :as dom]))
+
+(defmulti read om/dispatch)
+
+(defmethod read :jobcode
+  [{:keys [timesheet query state]} key params]
+  (let [st @state
+        jobcode-id (get timesheet :jobcode)
+        jobcode (select-keys (get-in st jobcode-id) query)]
+    {:value jobcode}))
+
+(defmethod read :notes
+  [{:keys [timesheet query]} key params]
+  {:value (get timesheet key)})
+
+(defmethod read :id
+  [{:keys [timesheet query]} key params]
+  {:value (get timesheet key)})
+
+(defmethod read :start
+  [{:keys [timesheet query]} key params]
+  {:value (get timesheet key)})
+
+(defmethod read :end
+  [{:keys [timesheet query]} key params]
+  {:value (get timesheet key)})
+
+(defn get-timesheets [{:keys [state query parser] :as env} key params]
+  (let [st @state
+        timesheets (get st key)
+        get-timesheet (fn [ident]
+                        (let [timesheet (get-in st ident)
+                              env' (dissoc env :query)
+                              env-with-timesheet (assoc env' :timesheet timesheet)]
+                          (parser env-with-timesheet query)))]
+    (mapv get-timesheet timesheets)))
+
+(defmethod read :timesheets
+  [{:keys [state query] :as env} key params]
+  {:value (get-timesheets env key params)})
+
+
+(def parser
+  (om/parser {:read read}))
