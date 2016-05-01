@@ -36,23 +36,23 @@
         jobcode (select-keys (get-in st (:timesheet/jobcode timesheet)) query)]
     {:value jobcode}))
 
-(defmethod read :timesheets/list
+(defmethod read :timesheet/list
   [{:keys [state query parser] :as env} key params]
   (letfn [(parse-timesheet
             ; given a timesheet id, parse the current query by placing that 
             ; person's data in the env, and call the parser recursively
             [timesheet-id]
-            (if-let [timesheet (get-in @state timesheet-id)]
+            (if-let [timesheet (get-in @state [:timesheet/by-id timesheet-id])]
               (do
-                
                 (parser (assoc env :timesheet timesheet) query))
               nil))]
     (let [st @state
-         timesheet-ids (get st key)]
-      (if (contains? st key)
-        {:value (mapv parse-timesheet timesheet-ids)}
+          timesheet-ids (into [] (keys (:timesheet/by-id st)))
+          sort (if (nil? (:sort params)) :timesheet/start (:sort params))]
+      (if (not (= [] timesheet-ids))
+        {:value (into [] (reverse (sort-by sort (mapv parse-timesheet timesheet-ids))))}
         {:value []}))))
-
 
 (def parser
   (om/parser {:read read}))
+

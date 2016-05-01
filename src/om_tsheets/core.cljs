@@ -12,26 +12,23 @@
 
 (enable-console-print!)
 
-(def app-state {:timesheets/list
-                [{:timesheet/id 0
-                  :timesheet/start (js/Date)
-                  :timesheet/end (js/Date)
-                  :timesheet/jobcode {:jobcode/id 0
-                                      :jobcode/name "A Jobcode"}
-                  :timesheet/notes "Some notes"}
-                 {:timesheet/id 1
-                  :timesheet/start (js/Date)
-                  :timesheet/end (js/Date)
-                  :timesheet/jobcode {:jobcode/id 1
-                            :jobcode/name "Running for President"}
-                  :timesheet/notes "Some more notes"}] 
-                })
+(def app-state {:timesheet/by-id {0 {:timesheet/id 0
+                                     :timesheet/start (js/Date.)
+                                     :timesheet/end (js/Date.)
+                                     :timesheet/jobcode [:jobcode/by-id 0]
+                                     :timesheet/notes "Some notes"}
+                                  1 {:timesheet/id 1
+                                     :timesheet/start (js/Date. 2015 5 5)
+                                     :timesheet/end (js/Date.)
+                                     :timesheet/jobcode [:jobcode/by-id 1]
+                                     :timesheet/notes "Some more notes"}}
+                :jobcode/by-id {0 {:jobcode/id 0
+                                   :jobcode/name "A Jobcode"} 
+                                1 {:jobcode/id 1
+                                   :jobcode/name "Running for President"}}})
 
 
 (defui Jobcode
-  static om/Ident
-  (ident [this {:keys [jobcode/id]}]
-         [:jobcode/by-id id])
   static om/IQuery
   (query [this]
          [:jobcode/id :jobcode/name])
@@ -44,8 +41,8 @@
 
 (defui Timesheet
   static om/Ident
-  (ident [this {:keys [timesheet/id]}]
-         [:timesheets/by-id id])
+  (ident [this {:keys [timesheet/id] :as props}]
+         [:timesheet/by-id id])
   static om/IQuery
   (query [this] 
          `[:timesheet/id :timesheet/start :timesheet/end :timesheet/notes {:timesheet/jobcode ~(om/get-query Jobcode)}])
@@ -54,8 +51,8 @@
     (let [{:keys [timesheet/start timesheet/end timesheet/jobcode timesheet/notes]} (om/props this)]
       (dom/div nil
         (dom/div nil "-------------------------------------")
-        (dom/div nil start)
-        (dom/div nil end)
+        (dom/div nil (str (.getFullYear start) "/" (.getMonth start) "/" (.getDate start)))
+        (dom/div nil (str (.getFullYear end) "/" (.getMonth end) "/" (.getDate end)))
         (jobcode-view jobcode)
         (dom/p nil notes)))))
 
@@ -67,11 +64,10 @@
           {:timesheet-item (om/get-query Timesheet)})
   static om/IQuery
   (query [this]
-         '[{:timesheets/list ?timesheet-item}])
+         '[{:timesheet/list ?timesheet-item}])
   Object
   (render [this] 
-          (let [{:keys [timesheets/list]} (om/props this)]
-            (print list)
+          (let [{:keys [timesheet/list]} (om/props this)] 
             (dom/div nil
                      (dom/p nil "HELLO")
                      (map timesheet list)))))
@@ -82,5 +78,6 @@
 
 ;; (println (om/get-query TimesheetList))
 ;; (println (om/tree->db TimesheetList app-state))
+
 (om/add-root! reconciler 
              TimesheetList (gdom/getElement "app"))
