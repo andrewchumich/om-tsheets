@@ -53,6 +53,17 @@
         {:value (into [] (reverse (sort-by sort (mapv parse-timesheet timesheet-ids))))}
         {:value []}))))
 
+(defmulti mutate om/dispatch)
+
+(defmethod mutate 'timesheet/add
+  [{:keys [state ref] :as env} key {:keys [timesheet] :as params}]
+  {:action (fn []
+             (let [st @state
+                   timesheet-id (count (:timesheet/by-id st))
+                   ts (assoc timesheet :timesheet/id timesheet-id)]
+               (swap! state assoc-in [:timesheet/by-id timesheet-id] ts)))})
+
 (def parser
-  (om/parser {:read read}))
+  (om/parser {:mutate mutate
+              :read read}))
 

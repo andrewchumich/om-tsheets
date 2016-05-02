@@ -39,6 +39,26 @@
 
 (def jobcode-view (om/factory Jobcode))
 
+(defn create-timesheet
+  ([]
+   (create-timesheet {}))
+  ([{:keys [start end jobcode notes]
+     :or {start (js/Date.)
+          end (js/Date.)
+          jobcode [:jobcode/by-id 0]
+          notes "WAW"} :as ts}]
+   {:timesheet/start start
+    :timesheet/end end
+    :timesheet/jobcode jobcode
+    :timesheet/notes notes}))
+
+(defn add-timesheet
+  ; dispatches action to add new timesheet
+  [c ts e] 
+  (om/transact! c
+                `[(timesheet/add {:timesheet ~ts})
+                  :timesheet/list]))
+
 (defui Timesheet
   static om/Ident
   (ident [this {:keys [timesheet/id] :as props}]
@@ -70,7 +90,10 @@
           (let [{:keys [timesheet/list]} (om/props this)] 
             (dom/div nil
                      (dom/p nil "HELLO")
-                     (map timesheet list)))))
+                     (map timesheet list)
+                     (dom/button #js {:onClick #(add-timesheet this (create-timesheet) %)
+                                      } "Add Timesheet")))))
+
 
 (def reconciler
   (om/reconciler {:state app-state
