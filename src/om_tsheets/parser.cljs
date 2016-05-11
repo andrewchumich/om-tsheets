@@ -3,6 +3,7 @@
             [cljs.core.async :as async :refer [<! >! put! chan]]
             [clojure.string :as string]
             [om.next :as om :refer-macros [defui]]
+            [om-tsheets.timesheet :as ts-tsheets :refer [create-timesheet]]
             [om.dom :as dom]))
 
 (defmulti read om/dispatch)
@@ -53,6 +54,15 @@
         {:value (into [] (reverse (sort-by sort (mapv parse-timesheet timesheet-ids))))}
         {:value []}))))
 
+(defmethod read :timesheet/editing
+  [{:keys [state query parser] :as env} key params]
+  (let [st @state
+        timesheet (:timesheet/editing st)]
+    (if (nil? timesheet)
+      {:value nil}
+      {:value (parser (assoc env :timesheet timesheet) query)}
+      )))
+
 (defmulti mutate om/dispatch)
 
 (defmethod mutate 'timesheet/add
@@ -62,6 +72,11 @@
                    timesheet-id (count (:timesheet/by-id st))
                    ts (assoc timesheet :timesheet/id timesheet-id)]
                (swap! state assoc-in [:timesheet/by-id timesheet-id] ts)))})
+
+(defmethod mutate 'timesheet/add-edit
+  [{:keys [state query parser] :as env} key params]
+  {:action (fn []
+             (swap! state assoc :timesheet/editing (create-timesheet)))})
 
 (def parser
   (om/parser {:mutate mutate

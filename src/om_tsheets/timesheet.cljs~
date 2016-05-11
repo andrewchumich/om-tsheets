@@ -1,0 +1,60 @@
+(ns om-tsheets.timesheet
+  (:require-macros [cljs.core.async.macros :refer [go]])
+  (:require [goog.dom :as gdom]
+            [cljs.core.async :as async :refer [<! >! put! chan]]
+            [clojure.string :as string]
+            [om.next :as om :refer-macros [defui]]
+            [om.dom :as dom]
+            [om-tsheets.parser :as tsheets-parser :refer [parser]]
+            [cljs.pprint :as pprint])
+  (:import [goog Uri]
+           [goog.net Jsonp]))
+
+
+(defui Jobcode
+  static om/IQuery
+  (query [this]
+         [:jobcode/id :jobcode/name])
+  Object
+  (render [this]
+          (let [{:keys [jobcode/name]} (om/props this)]
+            (dom/div nil name))))
+
+(def jobcode-view (om/factory Jobcode))
+
+(defn create-timesheet
+  ([]
+   (create-timesheet {}))
+  ([{:keys [start end jobcode notes]
+     :or {start (js/Date.)
+          end (js/Date.)
+          jobcode [:jobcode/by-id 0]
+          notes "WAW"} :as ts}]
+   {:timesheet/start start
+    :timesheet/end end
+    :timesheet/jobcode jobcode
+    :timesheet/notes notes}))
+
+(defn add-timesheet
+  ; dispatches action to add new timesheet
+  [c ts e] 
+  (om/transact! c
+                `[(timesheet/add {:timesheet ~ts})
+                  :timesheet/list]))
+
+(defui Timesheet
+  static om/Ident
+  (ident [this {:keys [timesheet/id] :as props}]
+         [:timesheet/by-id id])
+  static om/IQuery
+  (query [this] 
+         `[:timesheet/id :timesheet/start :timesheet/end :timesheet/notes {:timesheet/jobcode ~(om/get-query Jobcode)}])
+  Object
+  (render [this]
+    (let [{:keys [timesheet/start timesheet/end timesheet/jobcode timesheet/notes]} (om/props this)]
+      (dom/div nil
+        (dom/div nil "-------------------------------------")
+        (dom/div nil (str (.getFullYear start) "/" (.getMonth start) "/" (.getDate start)))
+        (dom/div nil (str (.getFullYear end) "/" (.getMonth end) "/" (.getDate end)))
+        (jobcode-view jobcode)
+        (dom/p nil notes)))))
