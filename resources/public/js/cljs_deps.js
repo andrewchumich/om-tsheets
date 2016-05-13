@@ -32,8 +32,10 @@ goog.addDependency("../com/cognitect/transit.js", ['com.cognitect.transit'], ['c
 goog.addDependency("../cognitect/transit.js", ['cognitect.transit'], ['com.cognitect.transit.eq', 'cljs.core', 'com.cognitect.transit.types', 'com.cognitect.transit', 'goog.math.Long']);
 goog.addDependency("../om/transit.js", ['om.transit'], ['cljs.core', 'cognitect.transit', 'om.tempid', 'com.cognitect.transit']);
 goog.addDependency("../om/next.js", ['om.next'], ['om.next.cache', 'clojure.zip', 'om.next.impl.parser', 'goog.string', 'goog.debug.Console', 'cljs.core', 'goog.object', 'goog.log', 'om.next.protocols', 'om.tempid', 'clojure.walk', 'om.transit', 'om.util']);
-goog.addDependency("../om_tsheets/parser.js", ['om_tsheets.parser'], ['goog.dom', 'cljs.core', 'om.dom', 'cljs.core.async', 'om.next', 'clojure.string']);
-goog.addDependency("../om_tsheets/core.js", ['om_tsheets.core'], ['goog.dom', 'goog.net.Jsonp', 'goog.Uri', 'cljs.core', 'om.dom', 'cljs.core.async', 'cljs.pprint', 'om_tsheets.parser', 'om.next', 'clojure.string']);
+goog.addDependency("../om_tsheets/jobcode.js", ['om_tsheets.jobcode'], ['goog.dom', 'goog.net.Jsonp', 'goog.Uri', 'cljs.core', 'om.dom', 'cljs.pprint', 'om.next']);
+goog.addDependency("../om_tsheets/timesheet.js", ['om_tsheets.timesheet'], ['goog.dom', 'cljs.core', 'om.dom', 'cljs.pprint', 'om.next', 'clojure.string', 'om_tsheets.jobcode']);
+goog.addDependency("../om_tsheets/parser.js", ['om_tsheets.parser'], ['goog.dom', 'cljs.core', 'om.dom', 'cljs.core.async', 'om_tsheets.timesheet', 'om.next', 'clojure.string']);
+goog.addDependency("../om_tsheets/core.js", ['om_tsheets.core'], ['goog.dom', 'goog.net.Jsonp', 'goog.Uri', 'cljs.core', 'om.dom', 'cljs.core.async', 'cljs.pprint', 'om_tsheets.timesheet', 'om_tsheets.parser', 'om.next', 'clojure.string']);
 goog.addDependency("../clojure/set.js", ['clojure.set'], ['cljs.core']);
 goog.addDependency("../figwheel/client/utils.js", ['figwheel.client.utils'], ['cljs.core', 'clojure.string']);
 goog.addDependency("../figwheel/client/file_reloading.js", ['figwheel.client.file_reloading'], ['goog.string', 'goog.net.jsloader', 'goog.Uri', 'cljs.core', 'goog.object', 'cljs.core.async', 'clojure.set', 'figwheel.client.utils', 'clojure.string']);

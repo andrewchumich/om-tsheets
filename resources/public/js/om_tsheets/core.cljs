@@ -6,81 +6,66 @@
             [om.next :as om :refer-macros [defui]]
             [om.dom :as dom]
             [om-tsheets.parser :as tsheets-parser :refer [parser]]
-            [cljs.pprint :as pprint])
+            [cljs.pprint :as pprint]
+            [om-tsheets.timesheet :as tsheets-timesheet :refer [timesheet-view Timesheet TimesheetEdit create-timesheet timesheet-edit-view add-timesheet add-edit-timesheet Timecard timecard-view ClockIn clock-in-view]])
   (:import [goog Uri]
            [goog.net Jsonp]))
 
 (enable-console-print!)
 
-(def app-state {:timesheets/list
-                [{:db/id 0
-                  :timesheet/start (js/Date)
-                  :timesheet/end (js/Date)
-                  :jobcode {:db/id 0
-                                      :jobcode/name "Hello"}
-                  :timesheet/notes "Some notes"}
-                 {:db/id 1
-                  :timesheet/start (js/Date)
-                  :timesheet/end (js/Date)
-                  :jobcode {:db/id 1
-                            :jobcode/name "Running for President"}
-                  :timesheet/notes "Some more notes"}] 
-                })
+(def app-state {:timesheet/editing nil
+                :timesheet/by-id {0 {:timesheet/id 0
+                                     :timesheet/clocked-in false
+                                     :timesheet/start (js/Date.)
+                                     :timesheet/end (js/Date.)
+                                     :timesheet/jobcode [:jobcode/by-id 0]
+                                     :timesheet/notes "Some notes"}
+                                  1 {:timesheet/id 1
+                                     :timesheet/clocked-in false
+                                     :timesheet/start (js/Date. 2015 5 5)
+                                     :timesheet/end (js/Date.)
+                                     :timesheet/jobcode [:jobcode/by-id 1]
+                                     :timesheet/notes "Some more notes"}}
+                :jobcode/by-id {0 {:jobcode/id 0
+                                   :jobcode/name "A Jobcode"} 
+                                1 {:jobcode/id 1
+                                   :jobcode/name "Running for President"}}})
 
-
-(defui Jobcode
-  static om/Ident
-  (ident [this {:keys [db/id]}]
-         [:jobcode/by-id id])
-  static om/IQuery
-  (query [this]
-         [:db/id :jobcode/name])
-  Object
-  (render [this]
-          (let [{:keys [name]} (om/props this)]
-            (dom/div nil name))))
-
-(def jobcode-view (om/factory Jobcode))
-
-(defui Timesheet
-  static om/Ident
-  (ident [this {:keys [db/id]}]
-         [:timesheets/by-id id])
-  static om/IQuery
-  (query [this] 
-         `[:db/id :timesheet/start :timesheet/end :timesheet/notes {:jobcode ~(om/get-query Jobcode)}])
-  Object
-  (render [this]
-    (let [{:keys [start end jobcode notes]} (om/props this)]
-      (dom/div nil
-        (dom/div nil "-------------------------------------")
-        (dom/div nil start)
-        (dom/div nil end)
-        (jobcode-view jobcode)
-        (dom/p nil notes)))))
-
-(def timesheet (om/factory Timesheet {:keyfn :id}))
 
 (defui TimesheetList
   static om/IQueryParams
   (params [this]
-          {:timesheet-item (om/get-query Timesheet)})
+          {:timesheet-item (om/get-query Timesheet)
+           :timesheet-edit-item (om/get-query TimesheetEdit)
+           :timecard-item (om/get-query Timecard)})
   static om/IQuery
   (query [this]
-         '[{:timesheets/list ?timesheet-item}])
+         '[{:timesheet/list ?timesheet-item}
+           {:timesheet/editing ?timesheet-edit-item}
+           {:timesheet/timecard ?timecard-item}])
   Object
   (render [this] 
-          (let [{:keys [timesheets]} (om/props this)]
-            (println timesheets)
+          (let [{:keys [timesheet/list timesheet/editing timesheet/timecard]} (om/props this)] 
+            (println timecard)
             (dom/div nil
-                     (dom/p nil "HELLO")
-                     (map timesheet timesheets)))))
+                     (dom/p nil "TSHEETS")
+                     (if (nil? timecard)
+                       (clock-in-view)
+                       (timecard-view timecard))
+                     (map timesheet-view list) 
+                     (if (nil? editing)
+                       (dom/button #js {:onClick #(add-edit-timesheet this (create-timesheet))} "Add Timesheet")
+                       (timesheet-edit-view editing))
+                     ))))
+;; (dom/button #js {:onClick #(add-timesheet this (create-timesheet) %)
+;;                                       } "Add Timesheet")
 
 (def reconciler
   (om/reconciler {:state app-state
                   :parser parser}))
 
-;; (println (om/get-query TimesheetList))
+(println (om/get-query Timesheet))
 ;; (println (om/tree->db TimesheetList app-state))
+
 (om/add-root! reconciler 
              TimesheetList (gdom/getElement "app"))

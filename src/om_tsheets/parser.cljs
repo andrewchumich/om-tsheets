@@ -11,11 +11,14 @@
 (defmethod read :default
   [{:keys [state]} key params]
   (let [st @state]
-    (println key)
     (if (contains? st key)
       {:value (get st key)})))
 
 (defmethod read :timesheet/start
+  [{:keys [state timesheet]} key params]
+  {:value (get timesheet key)})
+
+(defmethod read :timesheet/clocked-in
   [{:keys [state timesheet]} key params]
   {:value (get timesheet key)})
 
@@ -37,6 +40,11 @@
         jobcode (select-keys (get-in st (:timesheet/jobcode timesheet)) query)]
     {:value jobcode}))
 
+(defmethod read :jobcode/list
+  [{:keys [state query parser] :as env} key params]
+  (let [st @state]
+    {:value (into [] (vals (:jobcode/by-id st)))}))
+
 (defmethod read :timesheet/list
   [{:keys [state query parser] :as env} key params]
   (letfn [(parse-timesheet
@@ -54,6 +62,8 @@
         {:value (into [] (reverse (sort-by sort (mapv parse-timesheet timesheet-ids))))}
         {:value []}))))
 
+
+
 (defmethod read :timesheet/editing
   [{:keys [state query parser] :as env} key params]
   (let [st @state
@@ -63,7 +73,29 @@
       {:value (parser (assoc env :timesheet timesheet) query)}
       )))
 
+(defmethod read :timesheet/timecard
+  [{:keys [state query parser] :as env} key params]
+  (let [st @state
+        timesheet (first (filter #(get % :timesheet/clocked-in) (vals (:timesheet/by-id st))))]
+    (if (nil? timesheet)
+      {:value nil}
+      {:value (parser (assoc env :timesheet timesheet) query)}
+      )))
+
+
 (defmulti mutate om/dispatch)
+
+(defmethod mutate 'timesheet/update
+  [{:keys [state ref] :as env} key {:keys [timesheet id] :as params}]
+  {:action (fn []
+             (swap! state update-in id merge timesheet)
+             )})
+
+(defmethod mutate 'timesheet/set
+  [{:keys [state ref] :as env} key {:keys [timesheet id] :as params}]
+  {:action (fn []
+             (swap! state update-in id timesheet)
+             )})
 
 (defmethod mutate 'timesheet/add
   [{:keys [state ref] :as env} key {:keys [timesheet] :as params}]
@@ -77,6 +109,24 @@
   [{:keys [state query parser] :as env} key params]
   {:action (fn []
              (swap! state assoc :timesheet/editing (create-timesheet)))})
+
+(defmethod mutate 'timesheet/remove-edit
+  [{:keys [state query parser] :as env} key params]
+  {:action (fn []
+             (println (:timesheet/editing @state))
+             (swap! state assoc :timesheet/editing nil)
+             (println (:timesheet/editing @state)))})
+
+(defmethod mutate 'timesheet/submit-edit
+  [{:keys [state query parser] :as env} key params]
+  {:action (fn []
+             (if-let [timesheet (:timesheet/editing @state)]
+               (let [timesheet-id (count (:timesheet/by-id @state))
+                     ts (assoc timesheet :timesheet/id timesheet-id)]
+                 (swap! state assoc-in [:timesheet/by-id timesheet-id] ts)
+                 (swap! state assoc :timesheet/editing nil))))})
+
+
 
 (def parser
   (om/parser {:mutate mutate
