@@ -77,10 +77,8 @@
   [{:keys [state query parser] :as env} key params]
   (let [st @state
         timesheet (first (filter #(get % :timesheet/clocked-in) (vals (:timesheet/by-id st))))]
-    (if (nil? timesheet)
-      {:value nil}
-      {:value (parser (assoc env :timesheet timesheet) query)}
-      )))
+    {:value (parser (assoc env :timesheet timesheet) query)}
+      ))
 
 
 (defmulti mutate om/dispatch)
@@ -113,9 +111,7 @@
 (defmethod mutate 'timesheet/remove-edit
   [{:keys [state query parser] :as env} key params]
   {:action (fn []
-             (println (:timesheet/editing @state))
-             (swap! state assoc :timesheet/editing nil)
-             (println (:timesheet/editing @state)))})
+             (swap! state assoc :timesheet/editing nil))})
 
 (defmethod mutate 'timesheet/submit-edit
   [{:keys [state query parser] :as env} key params]
@@ -126,7 +122,34 @@
                  (swap! state assoc-in [:timesheet/by-id timesheet-id] ts)
                  (swap! state assoc :timesheet/editing nil))))})
 
+(defmethod mutate 'timecard/clock-out
+  [{:keys [state query parser] :as env} key {:keys [timesheet/id] :as params}]
+  {:action (fn []
+             (let [st @state
+                   timesheet (get-in st [:timesheet/by-id id])
+                   clocked-out-timesheet (assoc timesheet 
+                                                :timesheet/clocked-in false
+                                                :timesheet/end (js/Date.))]
+               (swap! state assoc-in [:timesheet/by-id id] clocked-out-timesheet)))})
 
+(defmethod mutate 'timecard/clock-in
+  [{:keys [state query parser] :as env} key {:keys [jobcode/id] :as params}]
+  {:action (fn []
+             (let [st @state] 
+               (if-let [timesheet (first (filter #(get % :timesheet/clocked-in) (vals (:timesheet/by-id st))))]
+                 (let [timesheet-id (:timesheet/id timesheet)
+                       clocked-out-timesheet (assoc timesheet 
+                                                    :timesheet/clocked-in false
+                                                    :timesheet/end (js/Date.))]
+                   (swap! state assoc-in [:timesheet/by-id timesheet-id] clocked-out-timesheet)))
+               (let [timesheet-id (count (:timesheet/by-id st))
+                     clocked-in-timesheet (create-timesheet {:timesheet/id timesheet-id
+                                                             :timesheet/clocked-in true
+                                                             :timesheet/start (js/Date.)
+                                                             :timesheet/jobcode [:jobcode/by-id id]
+                                                             :timesheet/end nil})]
+                 (swap! state assoc-in [:timesheet/by-id timesheet-id] clocked-in-timesheet)
+                 )))})
 
 (def parser
   (om/parser {:mutate mutate

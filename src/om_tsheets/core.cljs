@@ -7,7 +7,7 @@
             [om.dom :as dom]
             [om-tsheets.parser :as tsheets-parser :refer [parser]]
             [cljs.pprint :as pprint]
-            [om-tsheets.timesheet :as tsheets-timesheet :refer [timesheet-view Timesheet TimesheetEdit create-timesheet timesheet-edit-view add-timesheet add-edit-timesheet Timecard timecard-view ClockIn clock-in-view]])
+            [om-tsheets.timesheet :as tsheets-timesheet :refer [timesheet-view Timesheet TimesheetEdit create-timesheet timesheet-edit-view add-timesheet add-edit-timesheet Timecard timecard-view]])
   (:import [goog Uri]
            [goog.net Jsonp]))
 
@@ -15,15 +15,15 @@
 
 (def app-state {:timesheet/editing nil
                 :timesheet/by-id {0 {:timesheet/id 0
-                                     :timesheet/clocked-in false
-                                     :timesheet/start (js/Date.)
-                                     :timesheet/end (js/Date.)
+                                     :timesheet/clocked-in true
+                                     :timesheet/start (js/Date. 2016 4 15)
+                                     :timesheet/end nil
                                      :timesheet/jobcode [:jobcode/by-id 0]
                                      :timesheet/notes "Some notes"}
                                   1 {:timesheet/id 1
                                      :timesheet/clocked-in false
-                                     :timesheet/start (js/Date. 2015 5 5)
-                                     :timesheet/end (js/Date.)
+                                     :timesheet/start (js/Date. 2015 4 5)
+                                     :timesheet/end (js/Date. 2015 4 5)
                                      :timesheet/jobcode [:jobcode/by-id 1]
                                      :timesheet/notes "Some more notes"}}
                 :jobcode/by-id {0 {:jobcode/id 0
@@ -46,12 +46,9 @@
   Object
   (render [this] 
           (let [{:keys [timesheet/list timesheet/editing timesheet/timecard]} (om/props this)] 
-            (println timecard)
             (dom/div nil
                      (dom/p nil "TSHEETS")
-                     (if (nil? timecard)
-                       (clock-in-view)
-                       (timecard-view timecard))
+                     (timecard-view timecard)
                      (map timesheet-view list) 
                      (if (nil? editing)
                        (dom/button #js {:onClick #(add-edit-timesheet this (create-timesheet))} "Add Timesheet")
@@ -64,8 +61,8 @@
   (om/reconciler {:state app-state
                   :parser parser}))
 
-(println (om/get-query Timesheet))
-;; (println (om/tree->db TimesheetList app-state))
+;; (println (om/get-query Timecard))
+;; (println (:timecard/by-id (om/tree->db TimesheetList app-state)))
 
 (om/add-root! reconciler 
              TimesheetList (gdom/getElement "app"))
