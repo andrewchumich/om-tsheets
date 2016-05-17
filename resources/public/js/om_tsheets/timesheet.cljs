@@ -11,12 +11,15 @@
   ; create a new timesheet object
   ([]
    (create-timesheet {}))
-  ([{:keys [timesheet/start timesheet/end timesheet/jobcode timesheet/notes]
+  ([{:keys [timesheet/id timesheet/clocked-in timesheet/start timesheet/end timesheet/jobcode timesheet/notes]
      :or {timesheet/start (js/Date.)
           timesheet/end (js/Date.)
           timesheet/jobcode [:jobcode/by-id 0]
+          timesheet/clocked-in false
           timesheet/notes ""} :as ts}]
-   {:timesheet/start start
+   {:timesheet/id id
+    :timesheet/clocked-in clocked-in
+    :timesheet/start start
     :timesheet/end end
     :timesheet/jobcode jobcode
     :timesheet/notes notes}))
@@ -64,12 +67,12 @@
   Object
   (render [this]
     (let [{:keys [timesheet/clocked-in timesheet/start timesheet/end timesheet/jobcode timesheet/notes]} (om/props this)]
-      (println clocked-in)
       (dom/div nil
         (dom/div nil "-------------------------------------")
-        (dom/div nil (str clocked-in))
-        (dom/div nil (str (.getFullYear start) "/" (.getMonth start) "/" (.getDate start)))
-        (dom/div nil (str (.getFullYear end) "/" (.getMonth end) "/" (.getDate end)))
+        (dom/div nil (str clocked-in)) 
+        (dom/div nil (str (.getFullYear start) "/" (+ 1 (.getMonth start)) "/" (.getDate start)))
+        (if (not (nil? end)) 
+          (dom/div nil (str (.getFullYear end) "/" (+ 1 (.getMonth end)) "/" (.getDate end))))
         (jobcode-view jobcode)
         (dom/p nil notes)))))
 
@@ -88,41 +91,72 @@
 (defn set-notes [c notes]
   (add-edit-timesheet c (assoc {} :timesheet/notes notes)))
 
-(defn set-timecard-notes [c notes]
-  (println notes))
+(defn update-timecard [c timesheet]
+  (if-let [id (:timesheet/id timesheet)] 
+    (om/transact! c
+                  `[(timesheet/update {:timesheet ~timesheet
+                                       :id [:timesheet/by-id ~id]})
+                    :timesheet/list :timesheet/timecard])))
+
+(defn clock-out [c id]
+  (om/transact! c
+                `[(timecard/clock-out {:timesheet/id ~id})
+                  :timesheet/list :timesheet/timecard]))
+
+(defn clock-in [c id]
+  (om/transact! c
+                `[(timecard/clock-in {:jobcode/id ~id})
+                  :timesheet/list :timesheet/timecard]))
+
+
+(defn jobcode-item [c jobcode]
+  (if-let [id (:jobcode/id jobcode)]
+    (if-let [name (:jobcode/name jobcode)]
+       (dom/button #js {:onClick #(clock-in c id)
+                        :key id}
+                name))))
 
 (defui ClockIn
-  static om/IQueryParams
-  (params [this]
-          [:jobcode/list [:jobcode/name :jobcode/id]])
+  ; takes a jobcode list and a parent component
+  ; need to figure out how do get colocated query here
   Object
   (render [this]
-          (let [{:keys [jobcode/list]} (om/props this)]
-            (println list)
+          (let [{:keys [parent/component jobcode/list]} (om/props this)]
             (dom/div nil
-                     (dom/p nil "Jobcodes"))))
-  )
+                     (dom/p nil "Jobcodes")
+                     (map #(jobcode-item component %) list)))))
 
+;; (map #(jobcode-item c %) jobcodes)
 (def clock-in-view (om/factory ClockIn))
 
-(defui Timecard
+(defui Timecard 
   static om/IQuery
   (query [this]
-         `[:timesheet/id :timesheet/clocked-in :timesheet/start :timesheet/end :timesheet/notes {:timesheet/jobcode ~(om/get-query Jobcode)}])
+         `[:timesheet/id :timesheet/clocked-in :timesheet/start :timesheet/end :timesheet/notes {:timesheet/jobcode ~(om/get-query Jobcode)} {:jobcode/list [:jobcode/name :jobcode/id]}])
   Object
-  (componentDidMount [this props]
-                     (let [{:keys [timesheet/clocked-in timesheet/start timesheet/end timesheet/jobcode timesheet/notes]} (om/props this)]
-                       (om/set-state! this (om/props this))))
+  (componentDidMount [this] 
+                     (let [{:keys [timesheet/notes]} (om/props this)]
+                       (om/set-state! this {:timesheet/notes notes})))
+  (componentWillReceiveProps [this next-props]
+                             (let [{:keys [timesheet/notes]} next-props]
+                               (om/set-state! this {:timesheet/notes notes})))
   (render [this]
-          (let [{:keys []} (om/props this)]
+          (let [{:keys [timesheet/id timesheet/clocked-in timesheet/start timesheet/end timesheet/jobcode timesheet/notes jobcode/list]} (om/props this)] 
             (dom/div nil
                      (dom/p nil "Timecard")
-                     (dom/div #js {:className "edit-notes-container"}
-                              (dom/label nil "Notes: ")
-                              (dom/input #js {:type "text"
-                                              :onChange #(change-notes this %)
-                                              :onBlur #(set-timecard-notes this (om/get-state this :timesheet/notes))
-                                              :value (om/get-state this :timesheet/notes)}))))))
+                     (if (= true clocked-in)
+                       (dom/div nil 
+                                (dom/button #js {:onClick #(clock-out this id)} "Clock Out")
+                                (dom/div #js {:className "edit-notes-container"}
+                                         (dom/label nil "Notes: ")
+                                         (dom/input #js {:type "text"
+                                                         :onChange #(change-notes this %)
+                                                         :onBlur #(update-timecard this {:timesheet/id id
+                                                                                         :timesheet/notes (om/get-state this :timesheet/notes)})
+                                                         :value (om/get-state this :timesheet/notes)})))) 
+                     (clock-in-view (assoc {} 
+                                           :parent/component this
+                                           :jobcode/list list))))))
 
 (def timecard-view (om/factory Timecard))
 

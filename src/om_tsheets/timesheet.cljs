@@ -116,11 +116,18 @@
                         :key id}
                 name))))
 
-(defn clock-in-view
-  [c jobcodes]
-  (dom/div nil
-           (dom/p nil "Jobcodes")
-           (map #(jobcode-item c %) jobcodes)))
+(defui ClockIn
+  ; takes a jobcode list and a parent component
+  ; need to figure out how do get colocated query here
+  Object
+  (render [this]
+          (let [{:keys [parent/component jobcode/list]} (om/props this)]
+            (dom/div nil
+                     (dom/p nil "Jobcodes")
+                     (map #(jobcode-item component %) list)))))
+
+;; (map #(jobcode-item c %) jobcodes)
+(def clock-in-view (om/factory ClockIn))
 
 (defui Timecard 
   static om/IQuery
@@ -147,7 +154,9 @@
                                                          :onBlur #(update-timecard this {:timesheet/id id
                                                                                          :timesheet/notes (om/get-state this :timesheet/notes)})
                                                          :value (om/get-state this :timesheet/notes)})))) 
-                     (clock-in-view this list)))))
+                     (clock-in-view (assoc {} 
+                                           :parent/component this
+                                           :jobcode/list list))))))
 
 (def timecard-view (om/factory Timecard))
 
